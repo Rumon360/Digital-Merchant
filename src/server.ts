@@ -70,14 +70,39 @@ const start = async () => {
     if (req.body.pay_status === "Successful") {
       const payload = await getPayloadClient();
       const { orderId } = req.params;
+
       const { docs: updatedOrder } = await payload.update({
-        depth: 2,
+        depth: 3,
         collection: "orders",
         data: {
           _isPaid: true,
           transactionId: req.body.pg_txnid,
         },
         where: { id: { equals: orderId } },
+      });
+
+      updatedOrder[0].products.forEach(async (product) => {
+        if (product && typeof product === "object") {
+          const userProduct = product.user;
+          if (userProduct && typeof userProduct === "object") {
+            const { docs } = await payload.update({
+              collection: "users",
+              data: {
+                earnings:
+                  userProduct.earnings !== null &&
+                  userProduct.earnings !== undefined
+                    ? userProduct.earnings + product.price - 10
+                    : userProduct.earnings,
+                withdrawAmount:
+                  userProduct.withdrawAmount !== null &&
+                  userProduct.withdrawAmount !== undefined
+                    ? userProduct.withdrawAmount + product.price - 10
+                    : userProduct.withdrawAmount,
+              },
+              where: { id: { equals: userProduct.id } },
+            });
+          }
+        }
       });
 
       // send email

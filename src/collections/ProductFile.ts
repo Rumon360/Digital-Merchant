@@ -60,9 +60,6 @@ const yourOwnAndPurchased: Access = async ({ req }) => {
 
 export const ProductFiles: CollectionConfig = {
   slug: "product_files",
-  admin: {
-    hidden: ({ user }) => user.role !== "admin",
-  },
   hooks: {
     beforeChange: [addUser],
   },

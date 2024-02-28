@@ -132,7 +132,7 @@ export const ReceiptEmail = ({
             </Column>
 
             <Column style={productPriceWrapper} align="right">
-              <Text style={productPrice}>{formatPrice(1)}</Text>
+              <Text style={productPrice}>{formatPrice(10)}</Text>
             </Column>
           </Section>
 
@@ -154,7 +154,7 @@ export const ReceiptEmail = ({
             <Link href="#">Privacy Policy </Link>
           </Text>
           <Text style={footerCopyright}>
-            Copyright © 2023 DigitalHippo Inc. <br />{" "}
+            Copyright © 2023 Digital Merchant Inc. <br />{" "}
             <Link href="#">All rights reserved</Link>
           </Text>
         </Container>

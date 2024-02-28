@@ -2,72 +2,41 @@ import { PRODUCT_CATEGORIES } from "../../config";
 import { Access, CollectionConfig } from "payload/types";
 
 import { Product, User } from "../../payload-types";
-import {
-  AfterChangeHook,
-  BeforeChangeHook,
-} from "payload/dist/collections/config/types";
+import { BeforeChangeHook } from "payload/dist/collections/config/types";
 
-const addUser: BeforeChangeHook<Product> = async ({ req, data }) => {
+const addUser: BeforeChangeHook<Product> = async ({ req, data, operation }) => {
   const user = req.user;
-  return { ...data, user: user.id };
-};
-
-const syncUser: AfterChangeHook<Product> = async ({ req, doc }) => {
-  const fullUser = await req.payload.findByID({
-    collection: "users",
-    id: req.user.id,
-  });
-  if (fullUser && typeof fullUser === "object") {
-    const { products } = fullUser;
-
-    const allIDs = [
-      ...(products?.map((product) =>
-        typeof product === "object" ? product.id : product
-      ) || []),
-    ];
-
-    const createdProductIDs = allIDs.filter(
-      (id, index) => allIDs.indexOf(id) === index
-    );
-
-    const dataToUpdate = [...createdProductIDs, doc.id];
-
-    await req.payload.update({
-      collection: "users",
-      id: fullUser.id,
-      data: {
-        products: dataToUpdate,
-      },
-    });
+  if (operation === "create") {
+    return { ...data, user: user.id };
+  } else {
+    return { ...data };
   }
 };
 
-const isAdminOrHasAccess =
-  (): Access =>
-  ({ req: { user: _user } }) => {
-    const user = _user as User | undefined;
-    if (!user) return false;
-    if (user.role === "admin") return true;
-    const userProductIDs = (user.products || []).reduce<Array<string>>(
-      (acc, product) => {
-        if (!product) return acc;
-        if (typeof product === "string") {
-          acc.push(product);
-        } else {
-          acc.push(product.id);
-        }
+const isAdminOrHasAccess: Access = async ({ req }) => {
+  const user = req.user as User | null;
 
-        return acc;
-      },
-      []
-    );
+  if (user?.role === "admin") return true;
+  if (!user) return false;
 
-    return {
-      id: {
-        in: userProductIDs,
+  const { docs: products } = await req.payload.find({
+    collection: "products",
+    depth: 0,
+    where: {
+      user: {
+        equals: user.id,
       },
-    };
+    },
+  });
+
+  const productIds = products.map((prod) => prod.id).flat();
+
+  return {
+    id: {
+      in: [...productIds],
+    },
   };
+};
 
 export const Products: CollectionConfig = {
   slug: "products",
@@ -75,11 +44,11 @@ export const Products: CollectionConfig = {
     useAsTitle: "name",
   },
   access: {
-    read: isAdminOrHasAccess(),
-    update: isAdminOrHasAccess(),
-    delete: isAdminOrHasAccess(),
+    read: isAdminOrHasAccess,
+    update: isAdminOrHasAccess,
+    delete: isAdminOrHasAccess,
   },
-  hooks: { beforeChange: [addUser], afterChange: [syncUser] },
+  hooks: { beforeChange: [addUser] },
   fields: [
     {
       name: "user",
